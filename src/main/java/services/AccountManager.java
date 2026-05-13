@@ -1,0 +1,189 @@
+package services;
+
+import models.Account;
+import models.SavingsAccount;
+import models.CheckingAccount;
+import exceptions.InvalidAccountException;
+import utils.ApplicationLogger;
+import utils.ValidationUtils;
+
+/**
+ * Manages account creation, retrieval, and listing.
+ */
+public class AccountManager {
+  private final Account[] accounts;
+  private int accountCount;
+  private static final int MAX_ACCOUNTS = 50;
+
+  /**
+   * Constructs a new AccountManager.
+   */
+  public AccountManager() {
+    this.accounts = new Account[MAX_ACCOUNTS];
+    this.accountCount = 0;
+  }
+
+  /**
+   * Adds a new account to the system.
+   *
+   * @param account The account to add.
+   * @return true if successful, false if capacity is reached.
+   */
+  public boolean addAccount(Account account) {
+    if (accountCount < MAX_ACCOUNTS) {
+      accounts[accountCount] = account;
+      accountCount++;
+      ApplicationLogger.info("Account created: " + account.getAccountNumber()
+          + " (" + account.getAccountType() + ") for " + account.getCustomer().getName());
+      return true;
+    }
+    ApplicationLogger.warn("Account capacity reached. Could not add account for: "
+        + account.getCustomer().getName());
+    return false;
+  }
+
+  /**
+   * Finds an account by its account number.
+   *
+   * @param accountNumber The account number to search for.
+   * @return The found Account.
+   * @throws InvalidAccountException if the account is not found.
+   */
+  public Account getAccount(String accountNumber) throws InvalidAccountException {
+    Account account = findAccount(accountNumber);
+    if (account == null) {
+      ApplicationLogger.warn("Account lookup failed for number: " + accountNumber);
+    }
+    ValidationUtils.validateAccountExists(account);
+    return account;
+  }
+
+  /**
+   * Helper method to search for an account in the array.
+   *
+   * @param accountNumber The account number.
+   * @return The account if found, otherwise null.
+   */
+  private Account findAccount(String accountNumber) {
+    if (accountNumber == null) {
+      return null;
+    }
+    String searchInput = accountNumber.toUpperCase();
+
+    for (int i = 0; i < accountCount; i++) {
+      if (accounts[i].getAccountNumber().equalsIgnoreCase(searchInput)) {
+        return accounts[i];
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Displays details for a single account.
+   *
+   * @param account The account to view.
+   */
+  public void viewAccount(Account account) {
+    printHeader();
+    printAccountRow(account);
+    printAccountSpecialDetails(account);
+  }
+
+  /**
+   * Displays all registered accounts in the system.
+   */
+  public void viewAllAccounts() {
+    if (isSystemEmpty()) {
+      System.out.println("No accounts registered.");
+      return;
+    }
+
+    printHeader();
+    double totalBalance = displayAccountList();
+    printFooter(totalBalance);
+  }
+
+  /**
+   * Checks if there are no accounts in the system.
+   *
+   * @return true if empty, false otherwise.
+   */
+  private boolean isSystemEmpty() {
+    return accountCount == 0;
+  }
+
+  /**
+   * Prints the header for account listings.
+   */
+  private void printHeader() {
+    System.out.println("\nACCOUNT DETAILS");
+    System.out.println("-".repeat(80));
+    System.out.printf("%-8s | %-22s| %-12s   | %-14s | %-18s%n", "ACC NO", "CUSTOMER NAME", "TYPE",
+        "BALANCE", "STATUS");
+    System.out.println("-".repeat(80));
+  }
+
+  /**
+   * Iterates through accounts and prints their details.
+   *
+   * @return The total balance of all accounts.
+   */
+  private double displayAccountList() {
+    double totalBalance = 0;
+    for (int i = 0; i < accountCount; i++) {
+      Account account = accounts[i];
+      totalBalance += account.getBalance();
+      printAccountRow(account);
+      printAccountSpecialDetails(account);
+    }
+    return totalBalance;
+  }
+
+  /**
+   * Prints a single row of account details.
+   *
+   * @param account The account to print.
+   */
+  private void printAccountRow(Account account) {
+    System.out.printf("%-8s | %-21s | %-14s | %-14s | %-10s%n", account.getAccountNumber(),
+        account.getCustomer().getName(), account.getAccountType(),
+        String.format("%,.2f", account.getBalance()), account.getStatus());
+  }
+
+  /**
+   * Prints account-specific details (interest, overdraft, etc.).
+   *
+   * @param account The account to print details for.
+   */
+  private void printAccountSpecialDetails(Account account) {
+    if (account instanceof SavingsAccount sa) {
+      System.out.printf("         | Interest: %.1f%% | Min Balance: $%.2f%n",
+          3.5, sa.getMinimumBalance());
+      System.out.println("-".repeat(80));
+    } else if (account instanceof CheckingAccount ca) {
+      System.out.printf("         | Overdraft: $%.2f | Monthly Fee: $%.2f%n",
+          ca.getOverdraftLimit(), ca.getMonthlyFee());
+      System.out.println("-".repeat(80));
+    }
+  }
+
+  /**
+   * Prints the footer for account listings.
+   *
+   * @param totalBalance Total balance to display.
+   */
+  private void printFooter(double totalBalance) {
+    System.out.printf("\nTotal Accounts: %d%n", accountCount);
+    System.out.printf("Total Bank Balance: $%,.2f%n", totalBalance);
+  }
+
+  /**
+   * Gets the total number of accounts.
+   *
+   * @return Account count.
+   */
+
+  public int getAccountCount() {
+    return accountCount;
+  }
+}
